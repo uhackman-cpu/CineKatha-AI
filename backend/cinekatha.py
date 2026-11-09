@@ -103,16 +103,46 @@ def run(cmd: list[str], *, check: bool = True, cwd: Path | None = None):
     return subprocess.run(cmd, check=check, cwd=cwd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
 
 
-def make_voice(text: str, wav_path: Path, voice: str, rate: int) -> bool:
-    engine = shutil.which("espeak-ng") or shutil.which("espeak")
-    if not engine:
-        return False
-    result = subprocess.run([engine, "-v", voice, "-s", str(rate), "-w", str(wav_path), text],
-                            stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
-    if result.returncode != 0:
-        wav_path.unlink(missing_ok=True)
-        return False
-    return wav_path.exists() and wav_path.stat().st_size > 44
+def make_voice(text: str, audio_path: Path, tts_engine: str, voice_gender: str,
+               language: str, rate: int) -> Path | None:
+    """Generate narration. Neural Edge TTS is the default; eSpeak is opt-in only."""
+    if tts_engine == "none":
+        return None
+    if tts_engine == "edge":
+        executable = shutil.which("edge-tts")
+        if not executable:
+            raise RuntimeError("edge-tts is not installed. Run: python -m pip install -r requirements.txt")
+        voices = {
+            ("hi", "female"): "hi-IN-SwaraNeural",
+            ("hi", "male"): "hi-IN-MadhurNeural",
+            ("en", "female"): "en-US-AriaNeural",
+            ("en", "male"): "en-US-GuyNeural",
+        }
+        voice_name = voices[(language, voice_gender)]
+        result = subprocess.run(
+            [executable, "--voice", voice_name, "--text", text, "--write-media", str(audio_path)],
+            stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, timeout=180
+        )
+        if result.returncode != 0 or not audio_path.exists() or audio_path.stat().st_size < 1000:
+            audio_path.unlink(missing_ok=True)
+            detail = (result.stderr or result.stdout or "No audio file was produced").strip()
+            raise RuntimeError(f"Edge Neural TTS failed ({voice_name}): {detail[-1200:]}")
+        return audio_path
+
+    if tts_engine == "espeak":
+        executable = shutil.which("espeak-ng") or shutil.which("espeak")
+        if not executable:
+            raise RuntimeError("eSpeak is not installed; install espeak-ng or choose --tts-engine edge")
+        wav_path = audio_path.with_suffix(".wav")
+        result = subprocess.run(
+            [executable, "-v", language, "-s", str(rate), "-w", str(wav_path), text],
+            stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True
+        )
+        if result.returncode != 0 or not wav_path.exists() or wav_path.stat().st_size <= 44:
+            wav_path.unlink(missing_ok=True)
+            raise RuntimeError(f"eSpeak narration failed: {(result.stderr or result.stdout).strip()}")
+        return wav_path
+    raise ValueError(f"Unsupported TTS engine: {tts_engine}")
 
 
 def srt_time(seconds: float) -> str:
@@ -141,25 +171,23 @@ def build(args):
     for i, scene in enumerate(scenes, 1):
         frame = frames / f"scene_{i:03}.png"
         make_frame(i, len(scenes), scene, frame, args.title)
-        wav = audio / f"scene_{i:03}.wav"
-        has_voice = make_voice(scene, wav, args.voice, args.rate) if not args.no_voice else False
-        if has_voice:
+        audio_path = audio / f"scene_{i:03}.mp3"
+        generated_audio = None if args.no_voice else make_voice(
+            scene, audio_path, args.tts_engine, args.voice_gender, args.language, args.rate
+        )
+        if generated_audio:
             probe = shutil.which("ffprobe")
-            if probe:
-                try:
-                    info = json.loads(run([probe, "-v", "error", "-show_entries", "format=duration", "-of", "json", str(wav)]).stdout)
-                    duration = max(float(info["format"]["duration"]), 2.5)
-                except Exception:
-                    duration = max(len(scene) / 11.0, 4.0)
-            else:
-                duration = max(len(scene) / 11.0, 4.0)
+            if not probe:
+                raise RuntimeError("FFprobe is required to measure neural narration timing")
+            info = json.loads(run([probe, "-v", "error", "-show_entries", "format=duration",
+                                   "-of", "json", str(generated_audio)]).stdout)
+            duration = max(float(info["format"]["duration"]), 1.5)
         else:
             duration = max(len(scene) / 13.0, 4.0)
-            wav.unlink(missing_ok=True)
         durations.append(duration)
-        voice_files.append(wav if has_voice else None)
+        voice_files.append(generated_audio)
         scene_rows.append({"number": i, "text": scene, "frame": str(frame.relative_to(project)),
-                           "audio": str(wav.relative_to(project)) if has_voice else None,
+                           "audio": str(generated_audio.relative_to(project)) if generated_audio else None,
                            "duration_seconds": round(duration, 2)})
     # One SRT cue per scene, aligned to the estimated/actual narration duration.
     cursor = 0.0
@@ -173,7 +201,7 @@ def build(args):
         "project": args.title, "created_at": datetime.now(timezone.utc).isoformat(),
         "source_file": source.name, "scene_count": len(scenes),
         "render": {"width": W, "height": H, "fps": args.fps, "format": "mp4/h264"},
-        "voice_engine": "espeak-ng/espeak" if any(voice_files) else "not available / disabled",
+        "voice_engine": args.tts_engine if any(voice_files) else "disabled",
         "scenes": scene_rows,
         "notice": "Storyboard frames are typographic placeholders, not AI-generated photorealistic images."
     }
@@ -227,7 +255,7 @@ def build(args):
     print(f"Done. Output: {project / 'final.mp4'}")
     print(f"Scenes: {len(scenes)} | Duration estimate: {sum(durations):.1f}s")
     if not any(voice_files):
-        print("No local TTS voice was generated. Install espeak-ng with a Hindi voice or rerun with --no-voice.")
+        print("Narration is disabled. Use the default Edge Neural TTS or select --no-voice explicitly.")
 
 
 def main():
@@ -235,10 +263,13 @@ def main():
     parser.add_argument("story", help="UTF-8 .txt story file")
     parser.add_argument("--title", default="CineKatha Story")
     parser.add_argument("--output", default="output/cinekatha-project")
-    parser.add_argument("--voice", default="hi", help="espeak-ng voice code (default: hi)")
-    parser.add_argument("--rate", type=int, default=145)
+    parser.add_argument("--language", choices=["hi", "en"], default="hi")
+    parser.add_argument("--voice-gender", choices=["female", "male"], default="female")
+    parser.add_argument("--tts-engine", choices=["edge", "espeak", "none"], default="edge",
+                        help="Neural Edge TTS by default; robotic eSpeak must be selected explicitly")
+    parser.add_argument("--rate", type=int, default=145, help="Speech rate for explicit eSpeak mode")
     parser.add_argument("--fps", type=int, default=24)
-    parser.add_argument("--no-voice", action="store_true")
+    parser.add_argument("--no-voice", action="store_true", help="Render without narration")
     args = parser.parse_args()
     try:
         build(args)
