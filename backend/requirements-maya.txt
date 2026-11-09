@@ -1,0 +1,3 @@
+# Install only on Linux + NVIDIA CUDA 12.8; Python 3.10-3.12.
+# Follow upstream pinned installation instructions; this file is a reference only.
+soundfile>=0.12
