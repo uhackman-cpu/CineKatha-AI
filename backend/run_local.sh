@@ -1,0 +1,1 @@
+#!/usr/bin/env sh\nset -eu\ncd \"$(dirname \"$0\")\"\npython -m pip install -r requirements.txt\npython cinekatha.py \"${1:-sample_story_hi.txt}\" --title \"${2:-CineKatha Preview}\" --output \"${3:-../output/cinekatha-preview}\"\n
