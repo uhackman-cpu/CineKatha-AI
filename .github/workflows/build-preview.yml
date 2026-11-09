@@ -1,0 +1,52 @@
+name: Build free sample video
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-preview:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install free system tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg espeak-ng fonts-noto-core
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install Python dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r backend/requirements.txt
+
+      - name: Run unit tests
+        working-directory: backend
+        run: python -m unittest discover -s tests -v
+
+      - name: Render sample story
+        working-directory: backend
+        run: |
+          python cinekatha.py sample_story_hi.txt --title "आरव और नीला तारा" --output ../output/arav-preview
+
+      - name: Verify MP4
+        run: |
+          test -s output/arav-preview/final.mp4
+          ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 output/arav-preview/final.mp4
+
+      - name: Upload preview video and project files
+        uses: actions/upload-artifact@v4
+        with:
+          name: cinekatha-sample-preview
+          path: output/arav-preview/
+          if-no-files-found: error
+          retention-days: 7
