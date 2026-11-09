@@ -29,12 +29,16 @@ def espeak(out):
 
 def tiny(out):
     try:
-        import numpy  # noqa
+        import sys
         from huggingface_hub import snapshot_download
-        from indic_tiny_tts import TinyTTSOnnx
     except ImportError as exc:
         raise RuntimeError("Install optional deps: pip install -r requirements-tiny.txt") from exc
     folder=snapshot_download("sulabhkatiyar/indic-tiny-tts-hindi",ignore_patterns=["*.safetensors"])
+    sys.path.insert(0,folder)
+    try:
+        from indic_tiny_tts import TinyTTSOnnx
+    except ImportError as exc:
+        raise RuntimeError("Downloaded model package is missing indic_tiny_tts") from exc
     model=TinyTTSOnnx.from_pretrained(folder)
     wav=model.synthesize(SAMPLE,voice="male")
     wav_path=out.with_suffix(".wav")
