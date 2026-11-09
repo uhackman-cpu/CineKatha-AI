@@ -8,7 +8,7 @@ CineKatha-AI turns a story, outline, or eligible public-domain literary work int
 
 ## Vision
 
-Create a cloud-first production workspace that can:
+Create a production workspace that can:
 - Accept an original story, outline, or properly licensed/public-domain source.
 - Break the narrative into scenes, shots, dialogue, and visual directions.
 - Maintain character descriptions and continuity across scenes.
@@ -21,34 +21,30 @@ Create a cloud-first production workspace that can:
 ## Planned pipeline
 
 ```text
-Web Dashboard
-    -> Backend API
-    -> Story Orchestrator
-    -> Source & Rights Review
+Dashboard / Local UI
+    -> Story Research & Rights Review
     -> Story Director
-    -> Scene / Shot Planner
+    -> Screenplay + Scene / Shot Planner
     -> Character + Emotion Direction
-    -> Image / Voice / Music Providers
+    -> Visual / Voice / Music Assets
     -> Subtitle Engine
     -> FFmpeg Renderer
-    -> Review, Export & Download
+    -> Quality Review & Export
 ```
 
 ## Planned technology
 
 | Layer | Initial direction |
 |---|---|
-| Web dashboard | Next.js |
+| Web dashboard | Next.js (when needed) |
 | API | Python + FastAPI |
-| Database | PostgreSQL |
-| Background jobs | Redis + Celery |
-| Object storage | S3-compatible storage |
-| Story / planning models | Provider adapters for LLMs |
-| Voice | Piper (local) and optional ElevenLabs integration |
-| Visual assets | Openverse / Wikimedia Commons where licensing permits; pluggable image generation |
+| Database | SQLite for first local MVP; PostgreSQL when needed |
+| Background jobs | Local Python worker first |
+| Voice | Piper or another locally runnable open-source TTS |
+| Visual assets | Original assets; Openverse / Wikimedia Commons only where license permits |
 | Video rendering | FFmpeg |
-| Deployment | Docker |
-| CI | GitHub Actions |
+| Deployment | Local-first; optional free hosting only if its current limits fit |
+| CI | GitHub Actions within available free limits |
 
 These are architectural choices, not claims that the integrations are already implemented. Providers will be replaceable through stable interfaces.
 
@@ -63,26 +59,29 @@ These are architectural choices, not claims that the integrations are already im
 - `docs/` — architecture, roadmap, API, and rights policy
 - `.github/workflows/` — CI automation
 
-See [ARCHITECTURE.md](docs/ARCHITECTURE.md) and [ROADMAP.md](docs/ROADMAP.md).
+See [ARCHITECTURE.md](docs/ARCHITECTURE.md), [ROADMAP.md](docs/ROADMAP.md), and [FREE_BUDGET_STRATEGY.md](docs/FREE_BUDGET_STRATEGY.md).
 
 ## Getting started
 
 This is a scaffold-only release. Runtime setup instructions will be added when the first backend and frontend milestones are implemented. Do not expect `docker compose up` to launch a working application yet.
 
-## Cost strategy
+## ₹0 budget commitment
 
-The product is designed for a hybrid model:
-- Prefer local or free/open-source tools for development and baseline processing.
-- Make paid APIs optional, explicitly configured, and provider-swappable.
-- Estimate costs before expensive generation jobs.
-- Allow users to choose quality, speed, and cost profiles.
-- Never silently call a paid provider.
+**The default project must not require paid APIs, subscriptions, cloud GPUs, paid hosting, paid storage, or purchased credits.** The first working version will be local-first and use free/open-source software wherever practical. Paid services, if ever documented, will be optional, disabled by default, and never called without explicit user approval.
+
+Free hosted tiers can have quotas, sleep limits, expiry, or changing terms; we will not describe them as unlimited or guaranteed. High-end AI video generation may not be achievable at unlimited length or quality for free. If a feature cannot be delivered within ₹0, we will disclose that and use the best practical free alternative rather than incur a charge.
+
+See [docs/FREE_BUDGET_STRATEGY.md](docs/FREE_BUDGET_STRATEGY.md).
+
+## Research and production workflow
+
+The assistant will help research topics, check factual claims against sources, develop the story, write the screenplay, plan scenes and shots, prepare visual/voice/music directions, create subtitles, and review production outputs. Actual rendering and large model inference still require an available execution environment and compute; a render will only be marked complete after a real output file is produced and checked.
 
 ## Copyright, licensing, and responsible use
 
-Users are responsible for having the rights to submitted stories and assets. A work being old or published before 2000 does **not** automatically make it public domain. Verify the applicable jurisdiction, author death date, publication history, translations, editions, illustrations, recordings, and other derivative material. Prefer original, licensed, or verified public-domain sources. Preserve attribution and license information for sourced assets.
+Users must have rights to submitted stories and assets. A work being old or published before 2000 does **not** automatically make it public domain. Verify the applicable jurisdiction, author death date, publication history, translations, editions, illustrations, recordings, and derivative material. Preserve source URLs, creator, license, attribution, access date, and modifications for every third-party asset.
 
-See [docs/COPYRIGHT_POLICY.md](docs/COPYRIGHT_POLICY.md) for the planned policy.
+See [docs/COPYRIGHT_POLICY.md](docs/COPYRIGHT_POLICY.md).
 
 ## Contributing
 
