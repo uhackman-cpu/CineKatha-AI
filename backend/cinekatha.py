@@ -92,8 +92,8 @@ def make_frame(index: int, total: int, text: str, out: Path, title: str):
     image.save(out, quality=95)
 
 
-def run(cmd: list[str], *, check: bool = True):
-    return subprocess.run(cmd, check=check, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+def run(cmd: list[str], *, check: bool = True, cwd: Path | None = None):
+    return subprocess.run(cmd, check=check, cwd=cwd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
 
 
 def make_voice(text: str, wav_path: Path, voice: str, rate: int) -> bool:
@@ -188,29 +188,35 @@ def build(args):
          "-vf", f"fps={args.fps},scale=1920:1080,format=yuv420p",
          "-c:v", "libx264", "-preset", "veryfast", "-crf", "23", "-an", str(silent_video)])
 
-    # Assemble narration into a single track with scene gaps matching the timeline.
+    # Assemble narration in original scene order; subtitle paths resolve from project cwd.
     if any(voice_files):
         inputs = []
         filters = []
+        voice_indexes = []
+        input_index = 0
         for idx, wav in enumerate(voice_files):
             if wav:
                 inputs += ["-i", str(wav)]
-                filters.append(f"[{len(inputs)//2}:a]adelay={int(sum(durations[:idx])*1000)}|{int(sum(durations[:idx])*1000)}[a{idx}]")
-        labels = "".join(f"[a{i}]" for i, wav in enumerate(voice_files) if wav)
-        graph = ";".join(filters) + f";{labels}amix=inputs={len(labels)//4}:normalize=0[aout]"
+                delay = int(sum(durations[:idx]) * 1000)
+                filters.append(f"[{input_index}:a]adelay={delay}|{delay}[voice{idx}]")
+                voice_indexes.append(f"[voice{idx}]")
+                input_index += 1
+        graph = ";".join(filters) + ";" + "".join(voice_indexes) + f"amix=inputs={len(voice_indexes)}:normalize=0[aout]"
         try:
-            run([ffmpeg, "-y", *inputs, "-filter_complex", graph, "-map", "[aout]", "-c:a", "aac", str(project / "voice.m4a")])
+            run([ffmpeg, "-y", *inputs, "-filter_complex", graph, "-map", "[aout]",
+                 "-c:a", "aac", str(project / "voice.m4a")])
             run([ffmpeg, "-y", "-i", str(silent_video), "-i", str(project / "voice.m4a"),
-                 "-i", str(project / "subtitles.srt"), "-map", "0:v", "-map", "1:a",
+                 "-map", "0:v", "-map", "1:a",
                  "-vf", "subtitles=subtitles.srt:force_style='FontSize=22,Outline=2,Shadow=1'",
                  "-c:v", "libx264", "-preset", "veryfast", "-crf", "23", "-c:a", "aac",
-                 "-shortest", str(project / "final.mp4")])
-        except subprocess.CalledProcessError as exc:
+                 "-shortest", str(project / "final.mp4")], cwd=project)
+        except subprocess.CalledProcessError:
             print("Audio mux/subtitle burn-in failed; saving video-only output.")
             shutil.copy2(silent_video, project / "final.mp4")
     else:
         run([ffmpeg, "-y", "-i", str(silent_video), "-vf", "subtitles=subtitles.srt",
-             "-c:v", "libx264", "-preset", "veryfast", "-crf", "23", "-an", str(project / "final.mp4")])
+             "-c:v", "libx264", "-preset", "veryfast", "-crf", "23", "-an",
+             str(project / "final.mp4")], cwd=project)
     print(f"Done. Output: {project / 'final.mp4'}")
     print(f"Scenes: {len(scenes)} | Duration estimate: {sum(durations):.1f}s")
     if not any(voice_files):
