@@ -1,22 +1,25 @@
-# Hindi Voice Lab
+# Hindi Voice Lab — zero-budget test
 
-Generate identical Hindi male narration samples for a fair listening comparison.
+All engines receive the exact same Devanagari sample and male voice selection where available.
 
-## Quick ₹0 comparison (lightweight)
+## Quick CPU-friendly comparison
 ```bash
 cd backend
 python -m pip install -r requirements.txt
-python voice_test.py --output ../output/voice-comparison
+python -m pip install -r requirements-tiny.txt
+python voice_test.py --engines edge,tiny,espeak --output ../output/voice-comparison
 ```
+Indic Tiny TTS is 22.5M parameters, has a male Hindi voice, runs on CPU, and its model card provides an ONNX Runtime path. Its licence requires attribution (CC-BY-4.0 weights; MIT code; vocoder MIT). It is a calm reading voice, not a high-emotion actor voice.
 
-Outputs: Edge Neural Madhur, eSpeak offline baseline, exact shared script, and a JSON report.
+## Optional heavyweight comparisons
+- **Maya 2 Native**: use Python 3.10–3.12, Linux and supported NVIDIA CUDA 12.8 GPU. Model is 2.5B parameters, about 5 GB BF16 weights, and reference docs report around 9.2 GB loading peak. Test uses Hindi male persona Abhay. Install using the upstream instructions: https://github.com/MayaResearch/maya2-native
+- **Indic Parler-TTS**: see requirements-parler.txt; heavyweight model.
+- **IndicF5**: needs a permitted male reference WAV and exact transcript; Hugging Face requires accepting model access conditions. It is not auto-run until a reference clip and access are provided.
+- **Indic-Speak**: 3B parameter model; no hosted inference provider is listed on its model card. Treat as a future self-hosted candidate, not a lightweight CI job.
 
-## Optional local open-source neural voice
+Run heavy engines explicitly when hardware/dependencies are ready:
 ```bash
-python -m pip install -r requirements-parler.txt
-python voice_test.py --engines edge,parler,espeak --output ../output/voice-comparison
+python voice_test.py --engines edge,tiny,maya,parler,espeak
 ```
-Indic Parler-TTS uses the recommended Hindi male speaker Rohit and a natural conversational delivery prompt. It is a roughly 0.9B parameter model, so it may require substantial RAM/VRAM and can be slow on CPU. No hosted inference or paid API is used.
 
-## Default selection
-The production default remains Edge Neural Madhur until actual listening confirms an alternative is better. File size, duration, and loudness cannot objectively determine naturalness. A Hindi listener should compare the clips on the same phone/headphones before switching the default. Edge is an online third-party service; free access is not a guarantee of unlimited use.
+The default comparison is Edge + Tiny + eSpeak. GitHub Actions uses a CPU runner, so Maya is correctly marked unavailable there rather than silently substituting a different engine. No audio metric can determine which voice sounds most natural: listen to the generated clips before changing production default. Edge Madhur remains production default until a human listening test selects a winner.
