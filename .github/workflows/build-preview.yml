@@ -33,6 +33,19 @@ jobs:
         working-directory: backend
         run: python -m unittest discover -s tests -v
 
+      - name: Generate Hindi male voice comparison
+        working-directory: backend
+        run: |
+          python voice_test.py --output ../output/voice-comparison
+
+      - name: Upload voice comparison samples
+        uses: actions/upload-artifact@v4
+        with:
+          name: cinekatha-hindi-voice-comparison
+          path: output/voice-comparison/
+          if-no-files-found: error
+          retention-days: 7
+
       - name: Render sample story
         working-directory: backend
         run: |
