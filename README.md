@@ -4,7 +4,7 @@
 
 CineKatha-AI turns a story, outline, or eligible public-domain literary work into a scene-by-scene cinematic video. The planned pipeline combines story direction, screenplay and shot planning, consistent characters, expressive narration, music, subtitles, and FFmpeg rendering.
 
-> **Project status:** First local MVP added. The backend can split a UTF-8 story into scenes, create 1080p typographic storyboard frames, generate optional local speech with espeak-ng/espeak, write SRT subtitles, and render an MP4 with FFmpeg. It is an early storyboard-video prototype, not a photorealistic AI video generator.
+> **Project status:** First local MVP added. The backend can split a UTF-8 story into scenes, create 1080p typographic storyboard frames, generate Hindi/English neural narration through free Edge TTS by default, align scene timing to measured speech, write SRT subtitles, and render an MP4 with FFmpeg. It is an early storyboard-video prototype, not a photorealistic AI video generator.
 
 ## Vision
 
@@ -71,7 +71,7 @@ python -m pip install -r requirements.txt
 python cinekatha.py sample_story_hi.txt --title "आरव और नीला तारा" --output ../output/arav-preview
 ```
 
-FFmpeg is required for MP4 output. `espeak-ng`/`espeak` with a Hindi voice is optional for narration. The current visuals are cinematic storyboard cards; photorealistic image generation and AI research are not implemented yet.
+FFmpeg/FFprobe and internet access are required for the default free Edge Neural TTS narration. `eSpeak NG` remains an explicitly selected offline fallback (`--tts-engine espeak`) and sounds robotic. The current visuals are cinematic storyboard cards; photorealistic image generation and AI research are not implemented yet.
 
 ## ₹0 budget commitment
 
