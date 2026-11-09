@@ -29,11 +29,19 @@ PALETTE = [(12, 20, 38), (26, 25, 48), (14, 35, 48), (37, 24, 42), (17, 29, 55)]
 
 def load_font(size: int, bold: bool = False):
     candidates = (
-        ["/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
-         "/usr/share/fonts/truetype/liberation2/LiberationSans-Bold.ttf"]
+        [
+            "/usr/share/fonts/truetype/noto/NotoSansDevanagari-Bold.ttf",
+            "/usr/share/fonts/truetype/noto/NotoSansDevanagariUI-Bold.ttf",
+            "/system/fonts/NotoSansDevanagari-Bold.ttf",
+            "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
+        ]
         if bold else
-        ["/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
-         "/usr/share/fonts/truetype/liberation2/LiberationSans-Regular.ttf"]
+        [
+            "/usr/share/fonts/truetype/noto/NotoSansDevanagari-Regular.ttf",
+            "/usr/share/fonts/truetype/noto/NotoSansDevanagariUI-Regular.ttf",
+            "/system/fonts/NotoSansDevanagari-Regular.ttf",
+            "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
+        ]
     )
     for candidate in candidates:
         if Path(candidate).exists():
@@ -88,7 +96,6 @@ def make_frame(index: int, total: int, text: str, out: Path, title: str):
     for line in lines:
         draw.text((145, y), line, font=body_font, fill=(250, 248, 240, 255), stroke_width=1, stroke_fill=(0, 0, 0, 100))
         y += line_h
-    draw.text((110, H - 75), "CINEKATHA-AI  •  LOCAL ZERO-BUDGET PREVIEW", font=small_font, fill=(190, 200, 215, 220))
     image.save(out, quality=95)
 
 
