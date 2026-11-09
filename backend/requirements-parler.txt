@@ -1,0 +1,5 @@
+# Optional heavyweight local model; GPU strongly recommended.
+torch>=2.2
+transformers>=4.46
+parler-tts
+soundfile
